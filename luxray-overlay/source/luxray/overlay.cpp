@@ -1,26 +1,27 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "debug.hpp"
-#include "util.hpp"
-
-#include "overlay.hpp"
+#include <luxray/debug.hpp>
+#include <luxray/util.hpp>
+#include <luxray/overlay.hpp>
+#include <luxray/screen.hpp>
 
 extern "C" u64 __nx_vi_layer_id;
 
-extern Overlay* gp_overlay;
+extern Overlay *gp_overlay;
 
-lv_indev_t* gp_keyIn;
-lv_indev_t* gp_touchIn;
+lv_indev_t *gp_keyIn;
+lv_indev_t *gp_touchIn;
 
-Overlay::Overlay() {
+Overlay::Overlay()
+{
     TRY_GOTO(viInitialize(ViServiceType_Manager), end);
     TRY_GOTO(viOpenDefaultDisplay(&m_viDisplay), close_serv);
     TRY_GOTO(viCreateManagedLayer(&m_viDisplay, (ViLayerFlags)0, 0, &__nx_vi_layer_id),
-             close_display);  // flag 0 allows non-fullscreen layer
+             close_display); // flag 0 allows non-fullscreen layer
     TRY_GOTO(viCreateLayer(&m_viDisplay, &m_viLayer), close_managed_layer);
     TRY_GOTO(viSetLayerScalingMode(&m_viLayer, ViScalingMode_FitToLayer), close_managed_layer);
-    TRY_GOTO(viSetLayerZ(&m_viLayer, 100), close_managed_layer);  // Arbitrary z index
+    TRY_GOTO(viSetLayerZ(&m_viLayer, 100), close_managed_layer); // Arbitrary z index
     TRY_GOTO(viSetLayerSize(&m_viLayer, OVERLAY_WIDTH_BASE * OVERLAY_SCALE, OVERLAY_HEIGHT_BASE * OVERLAY_SCALE),
              close_managed_layer);
     TRY_GOTO(viSetLayerPosition(&m_viLayer, OVERLAY_POS_X, OVERLAY_POS_Y), close_managed_layer);
@@ -32,7 +33,7 @@ Overlay::Overlay() {
     TRY_GOTO(framebufferMakeLinear(&m_frameBufferInfo), close_fb);
 #endif
     mp_frameBuffers[0] = m_frameBufferInfo.buf;
-    mp_frameBuffers[1] = (lv_color_t*)m_frameBufferInfo.buf + OVERLAY_BUF_LENGTH;
+    mp_frameBuffers[1] = (lv_color_t *)m_frameBufferInfo.buf + OVERLAY_BUF_LENGTH;
 
     LOG("libnx initialized");
 
@@ -95,7 +96,7 @@ Overlay::Overlay() {
 
     LOG("lv initialized");
 
-    mp_mainScreen = std::make_unique<MainScreen>(nullptr);
+    mp_mainScreen = std::make_unique<Screen>(nullptr);
 
     LOG("screens initialized");
 
@@ -115,10 +116,11 @@ close_display:
 close_serv:
     viExit();
 end:
-    throw std::runtime_error("Overlay init failed");
+    return;
 }
 
-Overlay::~Overlay() {
+Overlay::~Overlay()
+{
     LOG("Exit Overlay");
 
     framebufferClose(&m_frameBufferInfo);
@@ -130,23 +132,27 @@ Overlay::~Overlay() {
 
 void Overlay::run() { mp_mainScreen->show(); }
 
-Framebuffer* Overlay::getFbInfo_() { return &m_frameBufferInfo; }
+Framebuffer *Overlay::getFbInfo_() { return &m_frameBufferInfo; }
 
-void Overlay::copyPrivFb_() {
+void Overlay::copyPrivFb_()
+{
     std::memcpy(mp_frameBuffers[m_nWindow.cur_slot], mp_frameBuffers[m_nWindow.cur_slot ^ 1],
                 m_frameBufferInfo.fb_size);
 }
 
-void Overlay::flushBuffer_(lv_disp_drv_t* p_disp, const lv_area_t* p_area, lv_color_t* p_lvColor) {
-    if (not gp_overlay->m_doRender) {
+void Overlay::flushBuffer_(lv_disp_drv_t *p_disp, const lv_area_t *p_area, lv_color_t *p_lvColor)
+{
+    if (not gp_overlay->m_doRender)
+    {
         return;
     }
-    Framebuffer* p_fbInfo = gp_overlay->getFbInfo_();
-    lv_color_t* p_frameBuf = (lv_color_t*)framebufferBegin(p_fbInfo, nullptr);
+    Framebuffer *p_fbInfo = gp_overlay->getFbInfo_();
+    lv_color_t *p_frameBuf = (lv_color_t *)framebufferBegin(p_fbInfo, nullptr);
 
 #if USE_LINEAR_BUF
     int renderWidth = p_area->x2 - p_area->x1 + 1;
-    for (int y = p_area->y1; y <= p_area->y2; y++) {
+    for (int y = p_area->y1; y <= p_area->y2; y++)
+    {
         std::memcpy(&p_frameBuf[y * OVERLAY_WIDTH + p_area->x1], p_lvColor, renderWidth * sizeof(lv_color_t));
         p_lvColor += renderWidth;
     }
@@ -154,8 +160,10 @@ void Overlay::flushBuffer_(lv_disp_drv_t* p_disp, const lv_area_t* p_area, lv_co
     gp_overlay->copyPrivFb_();
 
     // https://github.com/switchbrew/libnx/blob/v1.6.0/nx/include/switch/display/gfx.h#L106-L119
-    for (int y = p_area->y1; y <= p_area->y2; y++) {
-        for (int x = p_area->x1; x <= p_area->x2; x++) {
+    for (int y = p_area->y1; y <= p_area->y2; y++)
+    {
+        for (int x = p_area->x1; x <= p_area->x2; x++)
+        {
             u32 swizzledPos = ((y & 127) / 16) + (x / 16 * 8) + ((y / 16 / 8) * (OVERLAY_WIDTH / 16 * 8));
             swizzledPos *= 16 * 16 * 4;
             swizzledPos += ((y % 16) / 8) * 512 + ((x % 16) / 8) * 256 + ((y % 8) / 2) * 64 + ((x % 8) / 4) * 32 +
@@ -171,16 +179,19 @@ void Overlay::flushBuffer_(lv_disp_drv_t* p_disp, const lv_area_t* p_area, lv_co
     lv_disp_flush_ready(p_disp);
 }
 
-void Overlay::flushEmptyFb() {
-    void* p_frameBuf = framebufferBegin(&m_frameBufferInfo, nullptr);
+void Overlay::flushEmptyFb()
+{
+    void *p_frameBuf = framebufferBegin(&m_frameBufferInfo, nullptr);
     std::memset(p_frameBuf, 0, m_frameBufferInfo.fb_size);
     framebufferEnd(&m_frameBufferInfo);
 }
 
-bool Overlay::touchRead_(lv_indev_drv_t* indev_driver, lv_indev_data_t* data) {
+bool Overlay::touchRead_(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+{
     /*Save the state and save the pressed coordinate*/
     data->state = hidTouchCount() > 0 ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
-    if (data->state == LV_INDEV_STATE_PR) {
+    if (data->state == LV_INDEV_STATE_PR)
+    {
         touchPosition touch;
         hidTouchRead(&touch, 0);
 #ifdef HANDHELD
@@ -195,9 +206,11 @@ bool Overlay::touchRead_(lv_indev_drv_t* indev_driver, lv_indev_data_t* data) {
     return false; /*Return `false` because we are not buffering and no more data to read*/
 }
 
-bool Overlay::keysRead_(lv_indev_drv_t* indev_driver, lv_indev_data_t* data) {
+bool Overlay::keysRead_(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+{
     u64 keysDown = hidKeysHeld(CONTROLLER_P1_AUTO);
-    if (keysDown) {
+    if (keysDown)
+    {
         data->state = LV_INDEV_STATE_PR;
         // TODO: refactor this to a button map
         if (keysDown & KEY_DUP)
@@ -214,7 +227,9 @@ bool Overlay::keysRead_(lv_indev_drv_t* indev_driver, lv_indev_data_t* data) {
             data->key = LV_KEY_ENTER;
         else
             data->state = LV_INDEV_STATE_REL;
-    } else {
+    }
+    else
+    {
         data->state = LV_INDEV_STATE_REL;
     }
 

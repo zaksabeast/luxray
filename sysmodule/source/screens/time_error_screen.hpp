@@ -1,9 +1,10 @@
 #pragma once
 
-#include "screen.hpp"
+#include <luxray/overlay.hpp>
 
-class TimeErrorScreen : public Screen {
-   public:
-    TimeErrorScreen(Screen* prevScreen);
+class TimeErrorScreen : public Screen
+{
+public:
+    TimeErrorScreen(Screen *prevScreen);
     ~TimeErrorScreen();
 };

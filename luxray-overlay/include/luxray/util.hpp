@@ -2,22 +2,23 @@
 
 #include <cstdio>
 
-#include "debug.hpp"
+#include <luxray/debug.hpp>
 
 #ifdef DEBUG
-extern FILE* g_debug_file;
+extern FILE *g_debug_file;
 #endif
 
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 #ifndef CONCATENATE
-#    define _CONCATENATE(x1, x2) x1##x2
-#    define CONCATENATE(x1, x2) _CONCATENATE(x1, x2)
+#define _CONCATENATE(x1, x2) x1##x2
+#define CONCATENATE(x1, x2) _CONCATENATE(x1, x2)
 #endif
 
 #define TRY(x, cb)                                \
     ({                                            \
-        if (Result rc = (x); R_FAILED(rc)) {      \
+        if (Result rc = (x); R_FAILED(rc))        \
+        {                                         \
             LOG(STRINGIFY(x) " failed: %#x", rc); \
             ({ cb; });                            \
         }                                         \

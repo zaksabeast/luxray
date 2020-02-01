@@ -38,11 +38,12 @@ information. */
 
 #include <switch.h>
 
-#include "../debug.hpp"
+#include <luxray/overlay>
 
 #include "ntp.hpp"
 
-time_t ntpGetTime() {
+time_t ntpGetTime()
+{
     SocketInitConfig sockConf = {.bsdsockets_version = 1,
 
                                  .tcp_tx_buf_size = 0x800,
@@ -56,26 +57,29 @@ time_t ntpGetTime() {
                                  .sb_efficiency = 1};
 
     Result rs = socketInitialize(&sockConf);
-    if (R_FAILED(rs)) {
+    if (R_FAILED(rs))
+    {
         std::string msg = "Failed to init socket services, error code " + std::to_string(rs);
         throw std::runtime_error(msg);
     }
     LOG("Socket services initialized");
 
-    const char* SERVER_NAME = "0.pool.ntp.org";
+    const char *SERVER_NAME = "0.pool.ntp.org";
     const uint16_t PORT = 123;
 
     int sockfd = -1;
     sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sockfd < 0) {
+    if (sockfd < 0)
+    {
         std::string msg = "Failed to open socket with error code " + std::to_string(errno);
         throw std::runtime_error(msg);
     }
     LOG("Opened socket\nAttempting to connect to %s", SERVER_NAME);
 
-    struct hostent* server;
+    struct hostent *server;
     errno = 0;
-    if ((server = gethostbyname(SERVER_NAME)) == NULL) {
+    if ((server = gethostbyname(SERVER_NAME)) == NULL)
+    {
         std::string msg = "Gethostbyname failed: " + std::to_string(errno);
         throw std::runtime_error(msg);
     }
@@ -83,12 +87,13 @@ time_t ntpGetTime() {
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(struct sockaddr_in));
     serv_addr.sin_family = AF_INET;
-    memcpy((char*)&serv_addr.sin_addr.s_addr, (char*)server->h_addr_list[0], 4);
+    memcpy((char *)&serv_addr.sin_addr.s_addr, (char *)server->h_addr_list[0], 4);
     serv_addr.sin_port = htons(PORT);
 
     errno = 0;
     int res = 0;
-    if ((res = connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0) {
+    if ((res = connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) < 0)
+    {
         std::string msg = "Connect failed: " + std::to_string(res);
         msg += " errno: " + std::to_string(errno);
         throw std::runtime_error(msg);
@@ -97,10 +102,11 @@ time_t ntpGetTime() {
 
     ntp_packet packet;
     memset(&packet, 0, sizeof(ntp_packet));
-    packet.li_vn_mode = (0 << 6) | (4 << 3) | 3;              // LI 0 | Client version 4 | Mode 3
-    packet.txTm_s = htonl(NTP_TIMESTAMP_DELTA + time(NULL));  // Current networktime on the console
+    packet.li_vn_mode = (0 << 6) | (4 << 3) | 3;             // LI 0 | Client version 4 | Mode 3
+    packet.txTm_s = htonl(NTP_TIMESTAMP_DELTA + time(NULL)); // Current networktime on the console
     errno = 0;
-    if ((res = send(sockfd, (char*)&packet, sizeof(ntp_packet), 0)) < 0) {
+    if ((res = send(sockfd, (char *)&packet, sizeof(ntp_packet), 0)) < 0)
+    {
         std::string msg = "Error writing to socket: " + std::to_string(res);
         msg += " errno: " + std::to_string(errno);
         throw std::runtime_error(msg);
@@ -108,7 +114,8 @@ time_t ntpGetTime() {
     LOG("Sent time request with result: %x %x, waiting for response...", res, errno);
 
     errno = 0;
-    if ((size_t)(res = recv(sockfd, (char*)&packet, sizeof(ntp_packet), 0)) < sizeof(ntp_packet)) {
+    if ((size_t)(res = recv(sockfd, (char *)&packet, sizeof(ntp_packet), 0)) < sizeof(ntp_packet))
+    {
         std::string msg = "Error reading from socket: " + std::to_string(res);
         msg += " errno: " + std::to_string(errno);
         throw std::runtime_error(msg);

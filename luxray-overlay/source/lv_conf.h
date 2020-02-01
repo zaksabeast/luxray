@@ -14,7 +14,7 @@
 /* clang-format off */
 
 #include <stdint.h>
-#include "config.h"
+#include <luxray/config.h>
 
 /*====================
    Graphical settings

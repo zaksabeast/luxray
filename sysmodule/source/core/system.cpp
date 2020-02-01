@@ -3,14 +3,16 @@
 
 #include <switch.h>
 
-#include "../debug.hpp"
+#include <luxray/overlay>
 
 #include "system.hpp"
 
-bool os::nifmInternetIsConnected() {
+bool os::nifmInternetIsConnected()
+{
     NifmInternetConnectionStatus nifmICS;
     Result rs = nifmGetInternetConnectionStatus(NULL, NULL, &nifmICS);
-    if (R_FAILED(rs)) {
+    if (R_FAILED(rs))
+    {
         // LOG("nifmGetInternetConnectionStatus failed with error code %x", rs);
         return false;
     }
@@ -18,10 +20,12 @@ bool os::nifmInternetIsConnected() {
     return nifmICS == NifmInternetConnectionStatus_Connected;
 }
 
-bool os::setsysInternetTimeSyncIsOn() {
+bool os::setsysInternetTimeSyncIsOn()
+{
     bool internetTimeSyncIsOn;
     Result rs = setsysIsUserSystemClockAutomaticCorrectionEnabled(&internetTimeSyncIsOn);
-    if (R_FAILED(rs)) {
+    if (R_FAILED(rs))
+    {
         std::string msg = "Unable to detect if Internet time sync is enabled: " + std::to_string(rs);
         throw std::runtime_error(msg);
     }

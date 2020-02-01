@@ -5,36 +5,38 @@
 
 #include <switch.h>
 
-#include "debug.hpp"
-#include "lvgl/lvgl.h"
-#include "overlay.hpp"
+#include <luxray/overlay.hpp>
 #include "screens/time_screen.hpp"
-#include "util.hpp"
 
-extern "C" {
-u32 __nx_applet_type = AppletType_None;
-TimeServiceType __nx_time_service_type = TimeServiceType_System;
-char nx_inner_heap[INNER_HEAP_SIZE];
+#define INNER_HEAP_SIZE 0x1C0000
 
-u32 __nx_nv_transfermem_size = 0x15000;
+extern "C"
+{
+    u32 __nx_applet_type = AppletType_None;
+    TimeServiceType __nx_time_service_type = TimeServiceType_System;
+    char nx_inner_heap[INNER_HEAP_SIZE];
 
-void __libnx_initheap(void);
-void __libnx_init_time(void);
-void __appInit(void);
-void __appExit(void);
+    u32 __nx_nv_transfermem_size = 0x15000;
+
+    void __libnx_initheap(void);
+    void __libnx_init_time(void);
+    void __appInit(void);
+    void __appExit(void);
 }
 
-Overlay* gp_overlay;
-TimeScreen* gp_timeScreen;
+Overlay *gp_overlay;
+TimeScreen *gp_timeScreen;
 
-void __libnx_initheap(void) {
-    extern char* fake_heap_start;
-    extern char* fake_heap_end;
+void __libnx_initheap(void)
+{
+    extern char *fake_heap_start;
+    extern char *fake_heap_end;
     fake_heap_start = nx_inner_heap;
     fake_heap_end = nx_inner_heap + sizeof(nx_inner_heap);
 }
 
-void __appInit(void) {
+void __appInit(void)
+{
     // Init/exit services
     TRY(smInitialize(), fatalThrow(MAKERESULT(Module_Libnx, LibnxError_InitFail_SM)));
     TRY(hidInitialize(), fatalThrow(MAKERESULT(Module_Libnx, LibnxError_InitFail_HID)));
@@ -49,15 +51,19 @@ void __appInit(void) {
 
     LOG("Service init");
 
-    try {
+    try
+    {
         gp_overlay = new Overlay();
-    } catch (std::runtime_error& e) {
+    }
+    catch (std::runtime_error &e)
+    {
         LOG("runtime_error: %s", e.what());
         fatalThrow(MAKERESULT(405, 0));
     }
 }
 
-void __appExit(void) {
+void __appExit(void)
+{
     // Cleanup services.
     LOG("Service cleanup");
     delete gp_overlay;
@@ -71,12 +77,16 @@ void __appExit(void) {
     smExit();
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
     LOG("Main start");
 
-    try {
+    try
+    {
         gp_overlay->run();
-    } catch (std::runtime_error& e) {
+    }
+    catch (std::runtime_error &e)
+    {
         LOG("runtime_error: %s", e.what());
     }
 
